@@ -1,0 +1,44 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<CommandTable xmlns="http://schemas.microsoft.com/VisualStudio/2005-10-18/CommandTable" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <Extern href="stdidcmd.h"/>
+  <Extern href="vsshlids.h"/>
+
+  <Commands package="guidPackage">
+    <Groups>
+      <Group guid="guidPackageCmdSet" id="GroupId" priority="0x0600">
+        <Parent guid="guidSHLMainMenu" id="IDM_VS_MENU_EDIT" />
+      </Group>
+    </Groups>
+    
+    <Buttons>
+      <Button guid="guidPackageCmdSet" id="UpCommandId" priority="0x0100" type="Button">
+        <Parent guid="guidPackageCmdSet" id="GroupId" />
+        <CommandFlag>CommandWellOnly</CommandFlag>
+        <Strings>
+          <ButtonText>Scroll With Cursor Up</ButtonText>
+        </Strings>
+      </Button>
+      <Button guid="guidPackageCmdSet" id="DownCommandId" priority="0x0100" type="Button">
+        <Parent guid="guidPackageCmdSet" id="GroupId" />
+        <CommandFlag>CommandWellOnly</CommandFlag>
+        <Strings>
+          <ButtonText>Scroll With Cursor Down</ButtonText>
+        </Strings>
+      </Button>
+    </Buttons>
+  </Commands>
+
+  <KeyBindings>
+    <KeyBinding guid="guidPackageCmdSet" id="UpCommandId" editor="guidVSStd97" mod1="Control Alt Shift" key1="VK_UP" />
+    <KeyBinding guid="guidPackageCmdSet" id="DownCommandId" editor="guidVSStd97" mod1="Control Alt Shift" key1="VK_DOWN" />
+  </KeyBindings>
+
+  <Symbols>
+    <GuidSymbol name="guidPackage" value="{5c1d3c79-5ac0-4757-a6ef-8c310660662b}" />
+    <GuidSymbol name="guidPackageCmdSet" value="{0d7f8b6a-e69a-429e-b8d5-fa7937030546}">
+      <IDSymbol name="GroupId" value="0x1020" />
+      <IDSymbol name="UpCommandId" value="0x0100" />
+      <IDSymbol name="DownCommandId" value="0x0101" />
+    </GuidSymbol>
+  </Symbols>
+</CommandTable>
