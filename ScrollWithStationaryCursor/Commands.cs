@@ -60,7 +60,9 @@ namespace ScrollWithStationaryCursor
             if ((textManager != null)
                 && (textManager.GetActiveView2(1, null, (uint)_VIEWFRAMETYPE.vftCodeWindow, out var view) == VSConstants.S_OK)
                 && (view.GetScrollInfo(VerticalScrollBar, out int min, out int max, out int visibleLines, out int top) == VSConstants.S_OK)
-                && (view.GetCaretPos(out int caretLine, out int caretColumn) == VSConstants.S_OK))
+                && ((direction > 0) || (top > 0))
+                && (view.GetCaretPos(out int caretLine, out int caretColumn) == VSConstants.S_OK)
+                && ((direction < 0) || (caretLine < max)))
             {
                 view.SetScrollPosition(VerticalScrollBar, top + direction);
                 view.SetCaretPos(caretLine + direction, caretColumn);
