@@ -1,21 +1,21 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
     <Metadata>
-        <Identity Id="ScrollWithStationaryCursor.a31125b6-0807-467f-9332-38b60acf12d6" Version="1.0" Language="en-US" Publisher="Bernhard Häussermann" />
-        <DisplayName>ScrollWithStationaryCursor</DisplayName>
-        <Description xml:space="preserve">Adds commands that allow to scroll up or down in the text editor while having the (keyboard) cursor move along. For every line that you scroll up, the cursor will move one line up, and similarly when scrolling down. Because the cursor moves along as you scroll, it will remain the same distance from the top or bottom of the editor during the process.</Description>
+        <Identity Id="ScrollWithStationaryCursor.6c6fa4d2-b436-43e3-b155-ed8379a68744" Version="1.0" Language="en-US" Publisher="Bernhard Häussermann" />
+        <DisplayName>Scroll with Stationary Cursor</DisplayName>
+        <Description xml:space="preserve">Adds commands that allow to scroll up or down in the text editor while having the (keyboard) cursor move along. </Description>
     </Metadata>
     <Installation>
         <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[15.0, 16.0)" />
     </Installation>
     <Dependencies>
         <Dependency Id="Microsoft.Framework.NDP" DisplayName="Microsoft .NET Framework" d:Source="Manual" Version="[4.5,)" />
-      <Dependency Id="Microsoft.VisualStudio.MPF.15.0" DisplayName="Visual Studio MPF 15.0" d:Source="Installed" Version="[15.0]" />
-  </Dependencies>
+        <Dependency Id="Microsoft.VisualStudio.MPF.15.0" DisplayName="Visual Studio MPF 15.0" d:Source="Installed" Version="[15.0]" />
+    </Dependencies>
     <Prerequisites>
         <Prerequisite Id="Microsoft.VisualStudio.Component.CoreEditor" Version="[15.0,16.0)" DisplayName="Visual Studio core editor" />
     </Prerequisites>
-  <Assets>
-    <Asset Type="Microsoft.VisualStudio.VsPackage" d:Source="Project" d:ProjectName="%CurrentProject%" Path="|%CurrentProject%;PkgdefProjectOutputGroup|" />
-  </Assets>
+    <Assets>
+        <Asset Type="Microsoft.VisualStudio.VsPackage" d:Source="Project" d:ProjectName="%CurrentProject%" Path="|%CurrentProject%;PkgdefProjectOutputGroup|" />
+    </Assets>
 </PackageManifest>
