@@ -29,8 +29,8 @@
   </Commands>
 
   <KeyBindings>
-    <KeyBinding guid="guidPackageCmdSet" id="UpCommandId" editor="guidVSStd97" mod1="Control" key1="VK_HOME" />
-    <KeyBinding guid="guidPackageCmdSet" id="DownCommandId" editor="guidVSStd97" mod1="Control" key1="VK_END" />
+    <KeyBinding guid="guidPackageCmdSet" id="UpCommandId" editor="guidVSStd97" mod1="Control Alt Shift" key1="VK_UP" />
+    <KeyBinding guid="guidPackageCmdSet" id="DownCommandId" editor="guidVSStd97" mod1="Control Alt Shift" key1="VK_DOWN" />
   </KeyBindings>
 
   <Symbols>
