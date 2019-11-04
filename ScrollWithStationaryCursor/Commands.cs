@@ -1,8 +1,10 @@
 ﻿using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Shell;
+using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.TextManager.Interop;
 using System;
 using System.ComponentModel.Design;
+using System.Linq;
 using Task = System.Threading.Tasks.Task;
 
 namespace ScrollWithStationaryCursor
@@ -11,6 +13,8 @@ namespace ScrollWithStationaryCursor
     {
         private const int UpCommandId = 0x0100, DownCommandId = 0x0101;
         private const int VerticalScrollBar = 1;
+        private const int DirectionUp = -1, DirectionDown = 1;
+        private const int PlaceholderWidthInCharacters = 3;
         
         private readonly AsyncPackage package;
         
@@ -45,13 +49,13 @@ namespace ScrollWithStationaryCursor
         private void ExecuteUp(object sender, EventArgs e)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            Scroll(-1);
+            Scroll(DirectionUp);
         }
 
         private void ExecuteDown(object sender, EventArgs e)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            Scroll(1);
+            Scroll(DirectionDown);
         }
 
         private void Scroll(int direction)
@@ -59,14 +63,137 @@ namespace ScrollWithStationaryCursor
             var textManager = (IVsTextManager2)ServiceProvider.GetService(typeof(SVsTextManager));
             if ((textManager != null)
                 && (textManager.GetActiveView2(1, null, (uint)_VIEWFRAMETYPE.vftCodeWindow, out var view) == VSConstants.S_OK)
-                && (view.GetScrollInfo(VerticalScrollBar, out int min, out int max, out int visibleLines, out int top) == VSConstants.S_OK)
-                && ((direction > 0) || (top > 0))
-                && (view.GetCaretPos(out int caretLine, out int caretColumn) == VSConstants.S_OK)
-                && ((direction < 0) || (caretLine < max)))
+                && (view.GetScrollInfo(VerticalScrollBar, out int _, out int _, out int _, out int top) == VSConstants.S_OK)
+                && (view.GetCaretPos(out int caretLine, out int caretColumn) == VSConstants.S_OK))
             {
+                int nextLine = caretLine + direction;
+                int nextColumn = caretColumn;
+                bool isNextLineValid = ((direction == DirectionUp) && (top > 0))
+                    || ((direction == DirectionDown) && (view.GetPointOfLineColumn(nextLine, nextColumn, new Microsoft.VisualStudio.OLE.Interop.POINT[1]) == VSConstants.S_OK));
+                if (!isNextLineValid)
+                    return;
+
+                if (SkipCollapsedRegionForCaretToTheRightOfCollapsedRegion(view, direction, caretLine, caretColumn, out int nextLineForCase1, out int nextColumnForCase1))
+                {
+                    nextLine = nextLineForCase1;
+                    nextColumn = nextColumnForCase1;
+                }
+                else if (SkipCollapsedRegion(view, direction, caretLine, caretColumn, out int nextLineForCase2, out int nextColumnForCase2))
+                {
+                    nextLine = nextLineForCase2;
+                    nextColumn = nextColumnForCase2;
+                }
+
                 view.SetScrollPosition(VerticalScrollBar, top + direction);
-                view.SetCaretPos(caretLine + direction, caretColumn);
+                view.SetCaretPos(nextLine, nextColumn);
             }
+        }
+
+        private static bool SkipCollapsedRegionForCaretToTheRightOfCollapsedRegion(
+            IVsTextView view, int direction, int caretLine, int caretColumn, out int nextLine, out int nextColumn)
+        {
+            nextLine = 0;
+            nextColumn = 0;
+            if ((view.GetNearestPosition(caretLine, caretColumn, out int caretPosition, out int _) != VSConstants.S_OK) || (caretPosition == 0))
+                return false;
+
+            var textViewManager = TextViewManager.Instance;
+            var outliningManager = textViewManager.GetOutliningManager(textViewManager.ActiveTextView);
+            var textSnapshot = textViewManager.ActiveTextView.TextSnapshot;
+
+            var leftOfCaretPositionPoint = new SnapshotPoint(textSnapshot, caretPosition - 1);
+            var leftOfCaretPositionSpan = textViewManager.ActiveTextView.GetTextElementSpan(leftOfCaretPositionPoint);
+            var collapsedRegion = outliningManager.GetCollapsedRegions(leftOfCaretPositionSpan).FirstOrDefault();
+            if (collapsedRegion == null)
+                return false;
+
+            var endPoint = collapsedRegion.Extent.GetEndPoint(textSnapshot);
+            bool caretIsAtTheEndOfCollapsedRegion = endPoint.Position == caretPosition;
+            if (!caretIsAtTheEndOfCollapsedRegion)
+                return false;
+
+            if (view.GetLineAndColumn(endPoint.Position, out int regionEndLine, out int _) != VSConstants.S_OK)
+                return false;
+
+            bool regionEndsAtEndOfLine =
+                (view.GetLineAndColumn(endPoint.Position + 2, out int lineOfPositionAfterRegionEnd, out int _) == VSConstants.S_OK)
+                && (lineOfPositionAfterRegionEnd > regionEndLine);
+            if (!regionEndsAtEndOfLine)
+                return false;
+
+            var startPoint = collapsedRegion.Extent.GetStartPoint(textSnapshot);
+            if (view.GetLineAndColumn(startPoint.Position, out int regionStartLine, out int regionStartColumn) != VSConstants.S_OK)
+                return false;
+
+            nextLine = direction == DirectionDown ? caretLine + 1 : regionStartLine - 1;
+            nextColumn = regionStartColumn + PlaceholderWidthInCharacters;
+            return true;
+        }
+
+        private static bool SkipCollapsedRegion(
+            IVsTextView view, int direction, int caretLine, int caretColumn, out int nextLine, out int nextColumn)
+        {
+            nextLine = caretLine + direction;
+            nextColumn = caretColumn;
+            if (view.GetNearestPosition(nextLine, nextColumn, out int nextPosition, out int _) != VSConstants.S_OK)
+                return false;
+
+            var textViewManager = TextViewManager.Instance;
+            var outliningManager = textViewManager.GetOutliningManager(textViewManager.ActiveTextView);
+            var textSnapshot = textViewManager.ActiveTextView.TextSnapshot;
+
+            var nextPositionPoint = new SnapshotPoint(textSnapshot, nextPosition);
+            var nextPositionSpan = textViewManager.ActiveTextView.GetTextElementSpan(nextPositionPoint);
+            var collapsedRegion = outliningManager.GetCollapsedRegions(nextPositionSpan).FirstOrDefault();
+            if (collapsedRegion == null)
+                return false;
+
+            var startPoint = collapsedRegion.Extent.GetStartPoint(textSnapshot);
+            var endPoint = collapsedRegion.Extent.GetEndPoint(textSnapshot);
+            if ((view.GetLineAndColumn(startPoint.Position, out int regionStartLine, out int regionStartColumn) != VSConstants.S_OK)
+                || (view.GetLineAndColumn(endPoint.Position, out int regionEndLine, out int regionEndColumn) != VSConstants.S_OK))
+            {
+                return false;
+            }
+
+            bool RegionEndsAtEndOfLine()
+            {
+                return (view.GetLineAndColumn(endPoint.Position + 2, out int lineOfPositionAfterRegionEnd, out int _) == VSConstants.S_OK)
+                    && (lineOfPositionAfterRegionEnd > regionEndLine);
+            }
+
+            if (direction == DirectionUp)
+            {
+                if (regionStartColumn >= caretColumn)
+                {
+                    nextLine = regionStartLine;
+                }
+                else if (RegionEndsAtEndOfLine())
+                {
+                    nextLine = regionEndLine;
+                    nextColumn = regionEndColumn;
+                }
+                else
+                {
+                    nextLine = regionStartLine - 1;
+                }
+            }
+            else // Down
+            {
+                bool regionStartsToTheRightOfCaret = caretLine == regionStartLine;
+                if (regionStartsToTheRightOfCaret)
+                {
+                    nextLine = regionEndLine + 1;
+                }
+                else
+                {
+                    nextLine = regionEndLine;
+                    if (RegionEndsAtEndOfLine())
+                        nextColumn = regionEndColumn;
+                }
+            }
+
+            return true;
         }
     }
 }
