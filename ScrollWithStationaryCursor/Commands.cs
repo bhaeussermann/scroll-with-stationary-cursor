@@ -14,7 +14,6 @@ namespace ScrollWithStationaryCursor
         private const int UpCommandId = 0x0100, DownCommandId = 0x0101;
         private const int VerticalScrollBar = 1;
         private const int DirectionUp = -1, DirectionDown = 1;
-        private const int PlaceholderWidthInCharacters = 3;
         
         private readonly AsyncPackage package;
         
@@ -67,33 +66,36 @@ namespace ScrollWithStationaryCursor
                 && (view.GetCaretPos(out int caretLine, out int caretColumn) == VSConstants.S_OK))
             {
                 int nextLine = caretLine + direction;
-                int nextColumn = caretColumn;
                 bool isNextLineValid = ((direction == DirectionUp) && (top > 0))
-                    || ((direction == DirectionDown) && (view.GetPointOfLineColumn(nextLine, nextColumn, new Microsoft.VisualStudio.OLE.Interop.POINT[1]) == VSConstants.S_OK));
+                    || ((direction == DirectionDown) && (view.GetPointOfLineColumn(nextLine, caretColumn, new Microsoft.VisualStudio.OLE.Interop.POINT[1]) == VSConstants.S_OK));
                 if (!isNextLineValid)
                     return;
 
-                if (SkipCollapsedRegionForCaretToTheRightOfCollapsedRegion(view, direction, caretLine, caretColumn, out int nextLineForCase1, out int nextColumnForCase1))
+                if (SkipCollapsedRegionForCaretToTheRightOfCollapsedRegion(view, direction, caretLine, caretColumn, out int nextLineForCase1))
                 {
                     nextLine = nextLineForCase1;
-                    nextColumn = nextColumnForCase1;
                 }
-                else if (SkipCollapsedRegion(view, direction, caretLine, caretColumn, out int nextLineForCase2, out int nextColumnForCase2))
+                else if (SkipCollapsedRegion(view, direction, caretLine, caretColumn, out int nextLineForCase2))
                 {
                     nextLine = nextLineForCase2;
-                    nextColumn = nextColumnForCase2;
                 }
 
+                var textViewManager = TextViewManager.Instance;
+                var textSnapshot = textViewManager.ActiveTextView.TextSnapshot;
+                if (view.GetNearestPosition(nextLine, caretColumn, out int nextPosition, out int _) != VSConstants.S_OK)
+                    return;
+                var nextLinePoint = new SnapshotPoint(textSnapshot, nextPosition);
+                var nextTextViewLine = textViewManager.ActiveTextView.GetTextViewLineContainingBufferPosition(nextLinePoint);
+                textViewManager.ActiveTextView.Caret.MoveTo(nextTextViewLine);
+
                 view.SetScrollPosition(VerticalScrollBar, top + direction);
-                view.SetCaretPos(nextLine, nextColumn);
             }
         }
 
         private static bool SkipCollapsedRegionForCaretToTheRightOfCollapsedRegion(
-            IVsTextView view, int direction, int caretLine, int caretColumn, out int nextLine, out int nextColumn)
+            IVsTextView view, int direction, int caretLine, int caretColumn, out int nextLine)
         {
             nextLine = 0;
-            nextColumn = 0;
             if ((view.GetNearestPosition(caretLine, caretColumn, out int caretPosition, out int _) != VSConstants.S_OK) || (caretPosition == 0))
                 return false;
 
@@ -122,20 +124,18 @@ namespace ScrollWithStationaryCursor
                 return false;
 
             var startPoint = collapsedRegion.Extent.GetStartPoint(textSnapshot);
-            if (view.GetLineAndColumn(startPoint.Position, out int regionStartLine, out int regionStartColumn) != VSConstants.S_OK)
+            if (view.GetLineAndColumn(startPoint.Position, out int regionStartLine, out int _) != VSConstants.S_OK)
                 return false;
 
             nextLine = direction == DirectionDown ? caretLine + 1 : regionStartLine - 1;
-            nextColumn = regionStartColumn + PlaceholderWidthInCharacters;
             return true;
         }
 
         private static bool SkipCollapsedRegion(
-            IVsTextView view, int direction, int caretLine, int caretColumn, out int nextLine, out int nextColumn)
+            IVsTextView view, int direction, int caretLine, int caretColumn, out int nextLine)
         {
             nextLine = caretLine + direction;
-            nextColumn = caretColumn;
-            if (view.GetNearestPosition(nextLine, nextColumn, out int nextPosition, out int _) != VSConstants.S_OK)
+            if (view.GetNearestPosition(nextLine, caretColumn, out int nextPosition, out int _) != VSConstants.S_OK)
                 return false;
 
             var textViewManager = TextViewManager.Instance;
@@ -151,15 +151,9 @@ namespace ScrollWithStationaryCursor
             var startPoint = collapsedRegion.Extent.GetStartPoint(textSnapshot);
             var endPoint = collapsedRegion.Extent.GetEndPoint(textSnapshot);
             if ((view.GetLineAndColumn(startPoint.Position, out int regionStartLine, out int regionStartColumn) != VSConstants.S_OK)
-                || (view.GetLineAndColumn(endPoint.Position, out int regionEndLine, out int regionEndColumn) != VSConstants.S_OK))
+                || (view.GetLineAndColumn(endPoint.Position, out int regionEndLine, out int _) != VSConstants.S_OK))
             {
                 return false;
-            }
-
-            bool RegionEndsAtEndOfLine()
-            {
-                return (view.GetLineAndColumn(endPoint.Position + 2, out int lineOfPositionAfterRegionEnd, out int _) == VSConstants.S_OK)
-                    && (lineOfPositionAfterRegionEnd > regionEndLine);
             }
 
             if (direction == DirectionUp)
@@ -168,29 +162,18 @@ namespace ScrollWithStationaryCursor
                 {
                     nextLine = regionStartLine;
                 }
-                else if (RegionEndsAtEndOfLine())
-                {
-                    nextLine = regionEndLine;
-                    nextColumn = regionEndColumn;
-                }
                 else
                 {
-                    nextLine = regionStartLine - 1;
+                    bool regionEndsAtEndOfLine = 
+                        (view.GetLineAndColumn(endPoint.Position + 2, out int lineOfPositionAfterRegionEnd, out int _) == VSConstants.S_OK)
+                        && (lineOfPositionAfterRegionEnd > regionEndLine);
+                    nextLine = regionEndsAtEndOfLine ? regionEndLine : regionStartLine - 1;
                 }
             }
             else // Down
             {
                 bool regionStartsToTheRightOfCaret = caretLine == regionStartLine;
-                if (regionStartsToTheRightOfCaret)
-                {
-                    nextLine = regionEndLine + 1;
-                }
-                else
-                {
-                    nextLine = regionEndLine;
-                    if (RegionEndsAtEndOfLine())
-                        nextColumn = regionEndColumn;
-                }
+                nextLine = regionStartsToTheRightOfCaret ? regionEndLine + 1 : regionEndLine;
             }
 
             return true;
