@@ -10,3 +10,5 @@ Adds commands that allow to scroll up or down in the text editor while having th
 
 - `Edit.ScrollWithCursorUp` (default key binding: `Ctrl + Shift + Alt + Up`)
 - `Edit.ScrollWithCursorDown` (default key binding: `Ctrl + Shift + Alt + Down`)
+- `Edit.ScrollWithCursorUpExtend`
+- `Edit.ScrollWithCursorDownExtend`
