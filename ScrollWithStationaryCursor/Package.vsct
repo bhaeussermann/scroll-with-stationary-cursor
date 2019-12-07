@@ -25,6 +25,20 @@
           <ButtonText>Scroll With Cursor Down</ButtonText>
         </Strings>
       </Button>
+      <Button guid="guidPackageCmdSet" id="UpExtendCommandId" priority="0x0100" type="Button">
+        <Parent guid="guidPackageCmdSet" id="GroupId" />
+        <CommandFlag>CommandWellOnly</CommandFlag>
+        <Strings>
+          <ButtonText>Scroll With Cursor Up Extend</ButtonText>
+        </Strings>
+      </Button>
+      <Button guid="guidPackageCmdSet" id="DownExtendCommandId" priority="0x0100" type="Button">
+        <Parent guid="guidPackageCmdSet" id="GroupId" />
+        <CommandFlag>CommandWellOnly</CommandFlag>
+        <Strings>
+          <ButtonText>Scroll With Cursor Down Extend</ButtonText>
+        </Strings>
+      </Button>
     </Buttons>
   </Commands>
 
@@ -39,6 +53,8 @@
       <IDSymbol name="GroupId" value="0x1020" />
       <IDSymbol name="UpCommandId" value="0x0100" />
       <IDSymbol name="DownCommandId" value="0x0101" />
+      <IDSymbol name="UpExtendCommandId" value="0x0102" />
+      <IDSymbol name="DownExtendCommandId" value="0x0103" />
     </GuidSymbol>
   </Symbols>
 </CommandTable>

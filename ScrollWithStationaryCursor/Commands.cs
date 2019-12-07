@@ -12,6 +12,7 @@ namespace ScrollWithStationaryCursor
     internal sealed class Commands
     {
         private const int UpCommandId = 0x0100, DownCommandId = 0x0101;
+        private const int UpExtendCommandId = 0x0102, DownExtendCommandId = 0x0103;
         private const int VerticalScrollBar = 1;
         private const int DirectionUp = -1, DirectionDown = 1;
         
@@ -24,6 +25,8 @@ namespace ScrollWithStationaryCursor
 
             RegisterCommand(UpCommandId, ExecuteUp, commandService);
             RegisterCommand(DownCommandId, ExecuteDown, commandService);
+            RegisterCommand(UpExtendCommandId, ExecuteUpExtend, commandService);
+            RegisterCommand(DownExtendCommandId, ExecuteDownExtend, commandService);
         }
         
         public static Commands Instance { get; private set; }
@@ -57,7 +60,19 @@ namespace ScrollWithStationaryCursor
             Scroll(DirectionDown);
         }
 
-        private void Scroll(int direction)
+        private void ExecuteUpExtend(object sender, EventArgs e)
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            Scroll(DirectionUp, extendSelection: true);
+        }
+
+        private void ExecuteDownExtend(object sender, EventArgs e)
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            Scroll(DirectionDown, extendSelection: true);
+        }
+
+        private void Scroll(int direction, bool extendSelection = false)
         {
             var textManager = (IVsTextManager2)ServiceProvider.GetService(typeof(SVsTextManager));
             if ((textManager != null)
@@ -82,12 +97,21 @@ namespace ScrollWithStationaryCursor
 
                 var textViewManager = TextViewManager.Instance;
                 var textSnapshot = textViewManager.ActiveTextView.TextSnapshot;
-                if (view.GetNearestPosition(nextLine, caretColumn, out int nextPosition, out int _) != VSConstants.S_OK)
+                if ((view.GetNearestPosition(caretLine, caretColumn, out int currentPosition, out int _) != VSConstants.S_OK)
+                    || (view.GetNearestPosition(nextLine, caretColumn, out int nextPosition, out int _) != VSConstants.S_OK))
                     return;
+                var currentPoint = new SnapshotPoint(textSnapshot, currentPosition);
                 var nextLinePoint = new SnapshotPoint(textSnapshot, nextPosition);
                 var nextTextViewLine = textViewManager.ActiveTextView.GetTextViewLineContainingBufferPosition(nextLinePoint);
-                textViewManager.ActiveTextView.Selection.Clear();
                 textViewManager.ActiveTextView.Caret.MoveTo(nextTextViewLine);
+
+                if ((view.GetCaretPos(out caretLine, out caretColumn) == VSConstants.S_OK)
+                    && (view.GetNearestPosition(caretLine, caretColumn, out currentPosition, out int _) == VSConstants.S_OK))
+                {
+                    var previousPoint = currentPoint;
+                    currentPoint = new SnapshotPoint(textSnapshot, currentPosition);
+                    UpdateSelection(previousPoint, currentPoint, extendSelection);
+                }
 
                 view.SetScrollPosition(VerticalScrollBar, top + direction);
             }
@@ -178,6 +202,41 @@ namespace ScrollWithStationaryCursor
             }
 
             return true;
+        }
+
+        private static void UpdateSelection(SnapshotPoint previousPoint, SnapshotPoint currentPoint, bool extendSelection)
+        {
+            var selection = TextViewManager.Instance.ActiveTextView.Selection;
+            if (!extendSelection)
+            {
+                selection.Clear();
+                return;
+            }
+
+            SnapshotPoint newSelectionStart, newSelectionEnd;
+            if (selection.IsEmpty)
+            {
+                newSelectionStart = newSelectionEnd = previousPoint;
+            }
+            else
+            {
+                newSelectionStart = selection.Start.Position;
+                newSelectionEnd = selection.End.Position;
+            }
+
+            if (previousPoint == selection.Start.Position)
+                newSelectionStart = currentPoint;
+            else
+                newSelectionEnd = currentPoint;
+
+            if (newSelectionStart > newSelectionEnd)
+            {
+                var temp = newSelectionStart;
+                newSelectionStart = newSelectionEnd;
+                newSelectionEnd = temp;
+            }
+
+            selection.Select(new SnapshotSpan(newSelectionStart, newSelectionEnd), isReversed: currentPoint == newSelectionStart);
         }
     }
 }
