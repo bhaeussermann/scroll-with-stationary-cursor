@@ -86,6 +86,7 @@ namespace ScrollWithStationaryCursor
                     return;
                 var nextLinePoint = new SnapshotPoint(textSnapshot, nextPosition);
                 var nextTextViewLine = textViewManager.ActiveTextView.GetTextViewLineContainingBufferPosition(nextLinePoint);
+                textViewManager.ActiveTextView.Selection.Clear();
                 textViewManager.ActiveTextView.Caret.MoveTo(nextTextViewLine);
 
                 view.SetScrollPosition(VerticalScrollBar, top + direction);
