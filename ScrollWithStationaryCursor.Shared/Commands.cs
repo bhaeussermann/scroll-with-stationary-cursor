@@ -113,7 +113,16 @@ namespace ScrollWithStationaryCursor.Shared
                     UpdateSelection(previousPoint, currentPoint, extendSelection);
                 }
 
-                view.SetScrollPosition(VerticalScrollBar, top + direction);
+                bool shouldScroll = true;
+                while (shouldScroll)
+                {
+                    top += direction;
+                    view.SetScrollPosition(VerticalScrollBar, top);
+                    shouldScroll =
+                        (direction < 0)
+                        && (view.GetScrollInfo(VerticalScrollBar, out int _, out int _, out int _, out int newTop) == VSConstants.S_OK)
+                        && (newTop > top);
+                }
             }
         }
 
