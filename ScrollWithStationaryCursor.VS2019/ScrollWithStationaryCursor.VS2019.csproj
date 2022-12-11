@@ -72,16 +72,16 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.VisualStudio.SDK" Version="16.10.31321.278" ExcludeAssets="runtime">
+    <PackageReference Include="Microsoft.VisualStudio.SDK" Version="17.4.33103.184" ExcludeAssets="runtime">
       <IncludeAssets>compile; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.VisualStudio.Text.UI">
-      <Version>16.10.230</Version>
+      <Version>17.4.255</Version>
     </PackageReference>
     <PackageReference Include="Microsoft.VisualStudio.Text.UI.Wpf">
-      <Version>16.10.230</Version>
+      <Version>17.4.255</Version>
     </PackageReference>
-    <PackageReference Include="Microsoft.VSSDK.BuildTools" Version="17.0.5232">
+    <PackageReference Include="Microsoft.VSSDK.BuildTools" Version="17.4.2119">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>

@@ -126,8 +126,11 @@ namespace ScrollWithStationaryCursor.Shared
 
             var textViewManager = TextViewManager.Instance;
             var outliningManager = textViewManager.GetOutliningManager(textViewManager.ActiveTextView);
-            var textSnapshot = textViewManager.ActiveTextView.TextSnapshot;
+            bool textViewSupportsCollapsedRegions = (outliningManager != null) && outliningManager.Enabled;
+            if (!textViewSupportsCollapsedRegions)
+                return false;
 
+            var textSnapshot = textViewManager.ActiveTextView.TextSnapshot;
             var leftOfCaretPositionPoint = new SnapshotPoint(textSnapshot, caretPosition - 1);
             var leftOfCaretPositionSpan = textViewManager.ActiveTextView.GetTextElementSpan(leftOfCaretPositionPoint);
             var collapsedRegion = outliningManager.GetCollapsedRegions(leftOfCaretPositionSpan).FirstOrDefault();
@@ -165,8 +168,11 @@ namespace ScrollWithStationaryCursor.Shared
 
             var textViewManager = TextViewManager.Instance;
             var outliningManager = textViewManager.GetOutliningManager(textViewManager.ActiveTextView);
-            var textSnapshot = textViewManager.ActiveTextView.TextSnapshot;
+            bool textViewSupportsCollapsedRegions = (outliningManager != null) && outliningManager.Enabled;
+            if (!textViewSupportsCollapsedRegions)
+                return false;
 
+            var textSnapshot = textViewManager.ActiveTextView.TextSnapshot;
             var nextPositionPoint = new SnapshotPoint(textSnapshot, nextPosition);
             var nextPositionSpan = textViewManager.ActiveTextView.GetTextElementSpan(nextPositionPoint);
             var collapsedRegion = outliningManager.GetCollapsedRegions(nextPositionSpan).FirstOrDefault();
