@@ -1,4 +1,4 @@
-# ScrollWithStationaryCursor
+# Scroll With Stationary Cursor
 
 A Visual Studio 2019 / 2022 extension for having the cursor move along as you scroll in the text editor.
 
