@@ -77,41 +77,39 @@ namespace ScrollWithStationaryCursor.Shared
             var textManager = (IVsTextManager2)ServiceProvider.GetService(typeof(SVsTextManager));
             if ((textManager != null)
                 && (textManager.GetActiveView2(1, null, (uint)_VIEWFRAMETYPE.vftCodeWindow, out var view) == VSConstants.S_OK)
-                && (view.GetScrollInfo(VerticalScrollBar, out int _, out int _, out int _, out int top) == VSConstants.S_OK)
-                && (view.GetCaretPos(out int caretLine, out int caretColumn) == VSConstants.S_OK))
+                && (view.GetScrollInfo(VerticalScrollBar, out int _, out int _, out int _, out int top) == VSConstants.S_OK))
             {
-                int nextLine = caretLine + direction;
-                bool isNextLineValid = ((direction == DirectionUp) && (top > 0))
-                    || ((direction == DirectionDown) && (view.GetPointOfLineColumn(nextLine, caretColumn, new Microsoft.VisualStudio.OLE.Interop.POINT[1]) == VSConstants.S_OK));
+                var activeTextView = TextViewManager.Instance.ActiveTextView;
+                var caretPosition = activeTextView.Caret.Position.BufferPosition;
+                var caretTextViewLine = activeTextView.GetTextViewLineContainingBufferPosition(caretPosition);
+                var snapshotLines = caretTextViewLine.Extent.Snapshot.Lines;
+                var caretTextSnapshotLine = snapshotLines.First(l => l.End >= caretPosition);
+                int caretSnapshotLineNumber = caretTextSnapshotLine.LineNumber;
+
+                int nextSnapshotLineNumber = caretSnapshotLineNumber + direction;
+                bool isNextLineValid = ((direction == DirectionUp) && (top > 0)) || ((direction == DirectionDown) && (nextSnapshotLineNumber < snapshotLines.Count()));
                 if (!isNextLineValid)
                     return;
 
-                if (SkipCollapsedRegionForCaretToTheRightOfCollapsedRegion(view, direction, caretLine, caretColumn, out int nextLineForCase1))
+                int caretColumn = caretPosition.Position - caretTextSnapshotLine.Start.Position;
+                if (SkipCollapsedRegionForCaretToTheRightOfCollapsedRegion(view, direction, caretSnapshotLineNumber, caretColumn, out int nextLineForCase1))
                 {
-                    nextLine = nextLineForCase1;
+                    nextSnapshotLineNumber = nextLineForCase1;
                 }
-                else if (SkipCollapsedRegion(view, direction, caretLine, caretColumn, out int nextLineForCase2))
+                else if (SkipCollapsedRegion(view, direction, caretSnapshotLineNumber, caretColumn, out int nextLineForCase2))
                 {
-                    nextLine = nextLineForCase2;
+                    nextSnapshotLineNumber = nextLineForCase2;
                 }
 
-                var textViewManager = TextViewManager.Instance;
-                var textSnapshot = textViewManager.ActiveTextView.TextSnapshot;
-                if ((view.GetNearestPosition(caretLine, caretColumn, out int currentPosition, out int _) != VSConstants.S_OK)
-                    || (view.GetNearestPosition(nextLine, caretColumn, out int nextPosition, out int _) != VSConstants.S_OK))
-                    return;
-                var currentPoint = new SnapshotPoint(textSnapshot, currentPosition);
-                var nextLinePoint = new SnapshotPoint(textSnapshot, nextPosition);
-                var nextTextViewLine = textViewManager.ActiveTextView.GetTextViewLineContainingBufferPosition(nextLinePoint);
-                textViewManager.ActiveTextView.Caret.MoveTo(nextTextViewLine);
+                var selectionPointBefore = new SnapshotPoint(activeTextView.TextSnapshot, caretPosition);
 
-                if ((view.GetCaretPos(out caretLine, out caretColumn) == VSConstants.S_OK)
-                    && (view.GetNearestPosition(caretLine, caretColumn, out currentPosition, out int _) == VSConstants.S_OK))
-                {
-                    var previousPoint = currentPoint;
-                    currentPoint = new SnapshotPoint(textSnapshot, currentPosition);
-                    UpdateSelection(previousPoint, currentPoint, extendSelection);
-                }
+                var nextTextSnapshotLine = snapshotLines.ElementAt(nextSnapshotLineNumber);
+                var nextTextViewLine = activeTextView.GetTextViewLineContainingBufferPosition(nextTextSnapshotLine.Start);
+                activeTextView.Caret.MoveTo(nextTextViewLine);
+
+                var caretPositionAfter = activeTextView.Caret.Position.BufferPosition;
+                var selectionPointAfter = new SnapshotPoint(activeTextView.TextSnapshot, caretPositionAfter);
+                UpdateSelection(selectionPointBefore, selectionPointAfter, extendSelection);
 
                 bool shouldScroll = true;
                 while (shouldScroll)
